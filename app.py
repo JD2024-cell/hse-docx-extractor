@@ -274,77 +274,95 @@ def main():
                     st.write(f"• {file.name} ({file.size:,} bytes)")
             
             # Process files button
-            if st.button("🔄 Process Files", type="primary"):
-            # Initialize progress bar and status
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            processed_data = []
-            errors = []
-            
-            # Process each file
-            for i, uploaded_file in enumerate(uploaded_files):
-                try:
-                    status_text.text(f"Processing: {uploaded_file.name}")
-                    
-                    # Read file content
-                    file_content = uploaded_file.read()
-                    
-                    # Process the file
-                    result = process_docx_file(file_content, uploaded_file.name)
-                    processed_data.append(result)
-                    
-                    # Update progress
-                    progress_bar.progress((i + 1) / len(uploaded_files))
-                    
-                except Exception as e:
-                    errors.append(f"Error processing {uploaded_file.name}: {str(e)}")
-            
-            # Clear progress indicators
-            progress_bar.empty()
-            status_text.empty()
-            
-            # Display errors if any
-            if errors:
-                st.error("⚠️ Some files could not be processed:")
-                for error in errors:
-                    st.write(f"• {error}")
-            
-            # Display results if any files were processed successfully
-            if processed_data:
-                # Save to database
-                if Session:
-                    # Add file size to processed data
-                    for i, data in enumerate(processed_data):
-                        data['file_size'] = uploaded_files[i].size
-                    
-                    if save_to_database(processed_data, Session):
-                        st.success(f"✅ Successfully processed and saved {len(processed_data)} file(s) to database")
-                    else:
-                        st.warning(f"✅ Successfully processed {len(processed_data)} file(s) but database save failed")
-                else:
-                    st.success(f"✅ Successfully processed {len(processed_data)} file(s)")
-                
-                # Create DataFrame for display
-                df = pd.DataFrame(processed_data)
-                
-                # Display summary statistics
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Files", len(processed_data))
-                with col2:
-                    mereenie_entries = sum(1 for row in processed_data if row['Mereenie_HSE'] != 'Nil')
-                    st.metric("Mereenie Entries", mereenie_entries)
-                with col3:
-                    palm_valley_entries = sum(1 for row in processed_data if row['Palm Valley_HSE'] != 'Nil')
-                    st.metric("Palm Valley Entries", palm_valley_entries)
-                with col4:
-                    becgs_entries = sum(1 for row in processed_data if row['BECGS/Dingo_HSE'] != 'Nil')
-                    st.metric("BECGS/Dingo Entries", becgs_entries)
-                
-                # Display data preview
-                st.subheader("📋 Data Preview")
-                st.dataframe(df, use_container_width=True, height=400)
+if st.button("🔄 Process Files", type="primary"):
+    # Initialize progress bar and status
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    processed_data = []
+    errors = []
+
+    # Process each file
+    for i, uploaded_file in enumerate(uploaded_files):
+        try:
+            status_text.text(f"Processing: {uploaded_file.name}")
+
+            # Read file content
+            file_content = uploaded_file.read()
+
+            # Process the file
+            result = process_docx_file(file_content, uploaded_file.name)
+            processed_data.append(result)
+
+            # Update progress
+            progress_bar.progress((i + 1) / len(uploaded_files))
+
+        except Exception as e:
+            errors.append(f"Error processing {uploaded_file.name}: {str(e)}")
+
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
+
+    # Display errors if any
+    if errors:
+        st.error("⚠️ Some files could not be processed:")
+        for error in errors:
+            st.write(f"• {error}")
+
+    # Display results if any files were processed successfully
+    if processed_data:
+        # Save to database
+        if Session:
+            # Add file size to processed data
+            for i, data in enumerate(processed_data):
+                data['file_size'] = uploaded_files[i].size
+
+            if save_to_database(processed_data, Session):
+                st.success(f"✅ Successfully processed and saved {len(processed_data)} file(s) to database")
+            else:
+                st.warning(f"✅ Successfully processed {len(processed_data)} file(s) but database save failed")
+        else:
+            st.success(f"✅ Successfully processed {len(processed_data)} file(s)")
+
+        # Create DataFrame for display
+        df = pd.DataFrame(processed_data)
+
+        # Display summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Files", len(processed_data))
+        with col2:
+            mereenie_entries = sum(1 for row in processed_data if row['Mereenie_HSE'] != 'Nil')
+            st.metric("Mereenie Entries", mereenie_entries)
+        with col3:
+            palm_valley_entries = sum(1 for row in processed_data if row['Palm Valley_HSE'] != 'Nil')
+            st.metric("Palm Valley Entries", palm_valley_entries)
+        with col4:
+            becgs_entries = sum(1 for row in processed_data if row['BECGS/Dingo_HSE'] != 'Nil')
+            st.metric("BECGS/Dingo Entries", becgs_entries)
+
+        # Display data preview
+        st.subheader("📋 Data Preview")
+        st.dataframe(df, use_container_width=True, height=400)
+
+        # Generate Excel file
+        try:
+            excel_data = create_excel_file(processed_data)
+
+            # Download button
+            st.download_button(
+                label="📥 Download Excel File",
+                data=excel_data,
+                file_name="HSE_Summary_IndividualFields.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary"
+            )
+
+        except Exception as e:
+            st.error(f"Error creating Excel file: {str(e)}")
+    else:
+        st.error("❌ No files were processed successfully. Please check your files and try again.")
                 
                 # Generate Excel file
                 try:
